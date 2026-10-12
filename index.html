@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Appointment Tracker</title>
+<meta name="description" content="Track medical and other appointments for the whole family, sorted by what's next.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#EFF2FA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101526" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#EFF2FA;
+  --surface:#FFFFFF;
+  --ink:#191F35;
+  --muted:#5B6580;
+  --line:#DADFEC;
+  --ring:#8C97B5;
+  --ok:#0A7360;
+  --ok-bg:#E1F2EE;
+  --warn:#8F5200;
+  --warn-bar:#E39A12;
+  --warn-bg:#FFF1D6;
+  --bad:#B42A22;
+  --bad-bg:#FBE4E1;
+  --info:#2B55C9;
+  --info-bg:#E4EBFC;
+  --link:#2B55C9;
+  --toast-action:#8FA6FF;
+  --kid:#2B55C9;
+  --prep-bg:#FFF1D6;
+  --prep-ink:#8F5200;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101526;
+    --surface:#181F36;
+    --ink:#E8ECF7;
+    --muted:#98A3C0;
+    --line:#293250;
+    --ring:#65719A;
+    --ok:#3CCBA8;
+    --ok-bg:#123229;
+    --warn:#F2C065;
+    --warn-bar:#F2C065;
+    --warn-bg:#3A2D10;
+    --bad:#FF8A80;
+    --bad-bg:#3C1B19;
+    --info:#8FB0FF;
+    --info-bg:#1B2A55;
+    --link:#8EA2FF;
+    --toast-action:#3550D6;
+    --prep-bg:#3A2D10;
+    --prep-ink:#F2C065;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+[hidden]{display:none !important}
+body{
+  background:var(--bg);color:var(--ink);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--link);outline-offset:2px}
+
+.wrap{
+  max-width:560px;margin:0 auto;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(130px + env(safe-area-inset-bottom,0px));
+}
+
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.when{color:var(--muted);font-size:15px;font-weight:600}
+h1{margin:6px 0 0;font-size:clamp(30px,9vw,38px);line-height:1.05;font-weight:800;letter-spacing:-.03em}
+.tools{display:flex;gap:4px;flex:none}
+.iconbtn{
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);display:grid;place-items:center;padding:0;flex:none;
+}
+.iconbtn svg{width:22px;height:22px}
+.linkbtn{background:none;border:0;padding:4px 0;min-height:32px;font-size:14px;font-weight:700;color:var(--link)}
+
+.card{
+  position:relative;overflow:hidden;margin-top:16px;padding:16px;background:var(--surface);
+  border:1px solid var(--line);border-radius:22px;
+}
+.card h2{margin:0;font-size:19px;line-height:1.25;font-weight:750;letter-spacing:-.01em}
+.card h2.attn{color:var(--warn)}
+.card h2.good{color:var(--ok)}
+.card .note{margin:4px 0 0;color:var(--muted);font-size:14px}
+.nextrow{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.nextrow .avatar{flex:none}
+.nextrow .txt{flex:1;min-width:0}
+.nextrow b{display:block;font-size:16px;overflow-wrap:anywhere}
+.nextrow span{font-size:14px;color:var(--muted)}
+
+.search{
+  width:100%;height:46px;margin-top:14px;padding:0 14px;border-radius:14px;border:1.5px solid var(--line);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:16px;
+}
+.kids{display:flex;gap:8px;overflow-x:auto;margin:10px -16px 0;padding:4px 16px 8px;scrollbar-width:none}
+.kids::-webkit-scrollbar{display:none}
+.kidchip{
+  position:relative;flex:none;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px 0 5px;
+  border-radius:22px;background:var(--surface);border:1.5px solid var(--line);font-weight:700;
+}
+.kidchip .avatar{width:34px;height:34px;font-size:15px}
+.kidchip[aria-selected="true"]{background:var(--kid);border-color:var(--kid);color:#fff}
+.kidchip[aria-selected="true"] .avatar{background:#fff;color:var(--kid)}
+.kidchip.allchip{padding:0 16px}
+.kidchip.allchip[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.kidchip .duedot{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--warn-bar);border:2px solid var(--bg)}
+.avatar{
+  width:44px;height:44px;border-radius:50%;background:var(--kid);color:#fff;flex:none;
+  display:grid;place-items:center;font-weight:800;font-size:18px;
+}
+.groupby{display:flex;align-items:center;gap:10px;margin-top:6px}
+.groupby > span{font-size:13px;font-weight:700;color:var(--muted);flex:none}
+.groupby .seg3{margin:0;flex:1}
+.groupby .seg3 span{min-height:38px;font-size:14px}
+
+.grouphead{margin:22px 4px 8px;font-size:14px;font-weight:700;color:var(--muted);display:flex;gap:8px;align-items:baseline}
+.grouphead.g-today{color:var(--bad)}
+.grouphead.g-tomorrow{color:var(--warn)}
+.group{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.row{border-top:1px solid var(--line);box-shadow:inset 5px 0 0 var(--sc,var(--ring))}
+.row:first-child{border-top:0}
+.st-today{--sc:var(--bad)}
+.st-tomorrow{--sc:var(--warn-bar)}
+.st-week{--sc:var(--info)}
+.st-later{--sc:var(--ring)}
+.st-past{--sc:var(--ring);opacity:.68}
+.st-cancelled{--sc:var(--ring);opacity:.55}
+.rowbtn{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;
+  min-height:76px;padding:11px 16px 11px 20px;background:none;border:0;text-align:left;
+}
+.rowbtn .date{width:52px;flex:none;text-align:center}
+.rowbtn .date .dow{font-size:12px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+.rowbtn .date .dnum{font-size:22px;font-weight:800;line-height:1.1}
+.st-today .date .dow,.st-today .date .dnum{color:var(--bad)}
+.st-tomorrow .date .dow,.st-tomorrow .date .dnum{color:var(--warn)}
+.name{font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.name.strike{text-decoration:line-through;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;margin-top:2px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
+.tag svg{width:14px;height:14px}
+.owner{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--ink)}
+.owner i{width:10px;height:10px;border-radius:50%;background:var(--kid);display:inline-block}
+.prepflag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:var(--prep-ink);background:var(--prep-bg);padding:1px 8px;border-radius:999px;margin-top:3px}
+.side{text-align:right;white-space:nowrap}
+.rel{font-weight:800;font-size:14px}
+.st-today .rel{color:var(--bad)}
+.st-tomorrow .rel{color:var(--warn)}
+.st-week .rel{color:var(--info)}
+.tm{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.badge{display:inline-block;margin-top:2px;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:800;background:var(--bad-bg);color:var(--bad)}
+
+.empty{text-align:center;padding:36px 12px 8px}
+.empty h2{margin:0 0 6px;font-size:22px;font-weight:750}
+.empty p{margin:0 auto 18px;max-width:34ch;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{min-height:44px;padding:0 16px;border-radius:22px;background:var(--surface);border:1px solid var(--line);font-weight:650}
+.pastsec{margin-top:26px}
+
+.add{
+  position:fixed;left:0;right:0;margin:0 auto;width:max-content;
+  bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  height:56px;padding:0 24px 0 18px;border:0;border-radius:28px;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;font-weight:750;
+  background:var(--ink);color:var(--bg);box-shadow:0 8px 22px rgba(8,14,32,.28);z-index:10;
+}
+.add svg{width:22px;height:22px}
+
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(8,12,28,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet{
+  width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);
+  border-radius:24px 24px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  animation:up .2s ease-out;
+}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+.sheet h2{margin:0 0 4px;font-size:21px;font-weight:750;letter-spacing:-.01em;overflow-wrap:anywhere}
+.sheet .sub2{margin:0 0 14px;color:var(--muted);font-size:15px}
+.field{display:block;margin-bottom:14px}
+.lbl{display:block;font-size:14px;font-weight:650;margin-bottom:6px}
+.lbl .opt{color:var(--muted);font-weight:500}
+.hint{margin:0 0 10px;color:var(--muted);font-size:13px}
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=tel]{
+  width:100%;height:48px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font:inherit;font-size:16px;
+}
+textarea{
+  width:100%;min-height:70px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font:inherit;font-size:16px;resize:vertical;
+}
+input:focus,textarea:focus{border-color:var(--link)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.locrow{display:flex;gap:8px}
+.locrow input{flex:1}
+.locrow .iconbtn{flex:none}
+
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.seg3.two{grid-template-columns:1fr 1fr}
+.seg3.cols4{grid-template-columns:repeat(4,1fr)}
+.seg3 label{position:relative;display:block}
+.seg3 input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.seg3 span{
+  display:flex;align-items:center;justify-content:center;min-height:48px;padding:0 6px;
+  border-radius:12px;border:1.5px solid var(--line);background:var(--bg);font-weight:650;font-size:14px;text-align:center;
+}
+.seg3 input:checked+span{border-color:transparent;background:var(--ink);color:var(--bg)}
+.seg3 input:focus-visible+span,.pickchip input:focus-visible+span{outline:3px solid var(--link);outline-offset:2px}
+.pickchips{display:flex;flex-wrap:wrap;gap:8px}
+.pickchip{position:relative;display:block}
+.pickchip input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.pickchip span{
+  display:flex;align-items:center;min-height:44px;padding:0 15px;border-radius:22px;
+  border:1.5px solid var(--line);background:var(--bg);font-weight:650;font-size:15px;
+}
+.pickchip input:checked+span{background:var(--ink);color:var(--bg);border-color:transparent}
+.customrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;margin-top:12px}
+.customrow .btn{width:auto;padding:0 16px}
+.tplrow{display:flex;gap:8px;overflow-x:auto;margin:0 -20px 14px;padding:2px 20px 6px;scrollbar-width:none}
+.tplrow::-webkit-scrollbar{display:none}
+.tplrow .chip{flex:none;min-height:40px;padding:0 14px;font-size:14px;background:var(--bg)}
+
+.prepbox{border-radius:14px;background:var(--prep-bg);padding:12px 14px;margin-bottom:14px}
+.prepbox .lbl{color:var(--prep-ink)}
+.prepbox textarea{background:var(--surface)}
+
+.switchrow{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:8px 0}
+.switchrow b{font-weight:650}
+.switchrow small{display:block;color:var(--muted);font-size:13px}
+input.switch{
+  -webkit-appearance:none;appearance:none;flex:none;position:relative;margin:0;
+  width:52px;height:32px;border-radius:16px;border:0;background:var(--ring);transition:background .15s;
+}
+input.switch::after{
+  content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;
+  background:#fff;transition:transform .15s;
+}
+input.switch:checked{background:var(--link)}
+input.switch:checked::after{transform:translateX(20px)}
+details{margin:2px 0 14px;border:1.5px solid var(--line);border-radius:14px;padding:0 14px}
+summary{min-height:48px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+details[open] summary{margin-bottom:4px}
+.btnrow{display:grid;gap:10px}
+.btn{
+  min-height:50px;width:100%;padding:0 18px;border-radius:14px;border:0;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.btn small{font-size:13px;font-weight:500;opacity:.85}
+.btn.primary{background:var(--link);color:#fff}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn.danger{background:var(--bad-bg);color:var(--bad)}
+.extras{margin-top:14px;padding-top:6px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch}
+.textbtn{background:none;border:0;min-height:46px;padding:8px 4px;text-align:left;font-weight:650}
+.textbtn.dangertext{color:var(--bad)}
+.section{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.section h3{margin:0 0 10px;font-size:15px;font-weight:700}
+.section p{margin:0 0 12px;color:var(--muted);font-size:14px}
+.notice{padding:12px 14px;border-radius:14px;background:var(--warn-bg);color:var(--warn);font-size:14px;font-weight:600}
+.notice b{display:block;margin-bottom:2px}
+.vis{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.pillst{display:inline-block;margin:0 0 12px;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:800}
+.pillst.st-today{background:var(--bad-bg);color:var(--bad)}
+.pillst.st-tomorrow{background:var(--warn-bg);color:var(--warn)}
+.pillst.st-week{background:var(--info-bg);color:var(--info)}
+.pillst.st-later{background:var(--bg);color:var(--muted)}
+.pillst.st-past{background:var(--bg);color:var(--muted)}
+.pillst.st-cancelled{background:var(--bad-bg);color:var(--bad)}
+.kv{margin:0 0 6px}
+.kv div{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.kv div:first-child{border-top:0}
+.kv dt{font-size:13px;font-weight:700;color:var(--muted)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.kv a{color:var(--link);font-weight:650}
+.prepcall{border-radius:14px;background:var(--prep-bg);color:var(--prep-ink);padding:12px 14px;margin:14px 0;font-size:15px;overflow-wrap:anywhere}
+.prepcall b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.02em;margin-bottom:3px}
+.rlist{list-style:none;margin:0 0 6px;padding:0}
+.rlist li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:15px}
+.rlist li:first-child{border-top:0}
+.detailbtns{margin-top:14px}
+
+.toast{
+  position:fixed;left:0;right:0;margin:0 auto;width:max-content;z-index:30;
+  bottom:calc(88px + env(safe-area-inset-bottom,0px));
+  max-width:calc(100% - 32px);display:flex;align-items:center;gap:14px;
+  padding:12px 14px 12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);font-size:15px;
+  box-shadow:0 8px 22px rgba(8,14,32,.3);
+}
+.toast button{background:none;border:0;padding:6px 4px;min-height:36px;font-weight:800;color:var(--toast-action)}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="bar">
+      <div class="when" id="dateText"></div>
+      <div class="tools">
+        <button class="iconbtn" id="calBtn" type="button"></button>
+        <button class="iconbtn" id="settingsBtn" type="button"></button>
+      </div>
+    </div>
+    <h1 id="titleH"></h1>
+  </header>
+  <section id="summary" aria-live="polite"></section>
+  <section id="controls"></section>
+  <main id="list"></main>
+  <section class="pastsec" id="pastsec"></section>
+</div>
+<button class="add" id="addBtn" type="button"></button>
+<div id="sheetRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  var KEY = 'apptTracker.v1';
+  var CATS = ['gp', 'dentist', 'eye', 'specialist', 'vaccination', 'lab', 'therapy', 'other'];
+  var PRESET_LEADS = [1, 2, 3, 5, 7, 14, 30];   // days before
+  var COLORS = ['#2B55C9', '#7B4BD1', '#C93585', '#BD5A0B', '#1B8552', '#0B7F8F'];
+  var $ = function (s) { return document.querySelector(s); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+
+  var ICON = {
+    plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    tune: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M20 7h0M4 12h4M14 12h6M4 17h10M20 17h0"/><circle cx="17" cy="7" r="2.2"/><circle cx="11" cy="12" r="2.2"/><circle cx="17" cy="17" r="2.2"/></g></svg>',
+    cal: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></g></svg>',
+    pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.1 7-11.5A7 7 0 105 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></g></svg>',
+    phone: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h3l1.5 4-2 1.5a11 11 0 005 5l1.5-2 4 1.5v3a1.5 1.5 0 01-1.6 1.5A16 16 0 015 6.1 1.5 1.5 0 016.5 4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    note: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l3 3V20a1 1 0 01-1 1H6a1 1 0 01-1-1V4.5a1 1 0 011-1z"/><path d="M9 11h6M9 15h6"/></g></svg>'
+  };
+
+  // tiny DOM builder (uses textContent, so anything typed by the user can never inject HTML)
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k === 'class') el.className = v;
+        else if (k === 'html') el.innerHTML = v;
+        else if (k === 'value' || k === 'checked' || k === 'hidden') el[k] = v;
+        else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : v);
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) append(el, arguments[i]);
+    return el;
+  }
+  function append(el, kid) {
+    if (kid == null || kid === false) return;
+    if (Array.isArray(kid)) { kid.forEach(function (k) { append(el, k); }); return; }
+    el.appendChild(typeof kid === 'string' || typeof kid === 'number' ? document.createTextNode(String(kid)) : kid);
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function plural(n, f) { var m10 = n % 10, m100 = n % 100; return n === 1 ? f[0] : (m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14)) ? f[1] : f[2]; }
+
+  /* ---------- text (English default / Polish) ---------- */
+  var T = {
+    en: {
+      appName: 'Appointment Tracker', title: 'Appointments', addAppt: 'Add appointment', calAll: 'Add all to calendar',
+      search: 'Search', searchPh: 'Search appointments…',
+      headNone: 'Nothing coming up.',
+      headNext: function (n) { return n === 1 ? '1 appointment coming up' : n + ' appointments coming up'; },
+      next: 'Next up', allPeople: 'Everyone', general: 'General', peopleNav: 'People',
+      groupBy: 'Group', gDate: 'Date', gPerson: 'Person', gType: 'Type',
+      h_today: 'Today', h_tomorrow: 'Tomorrow', h_week: 'This week', h_later: 'Later',
+      tplTitle: 'Quick add',
+      tpl_gp: 'GP check-up', tpl_dentist: 'Dentist', tpl_eye: 'Eye test', tpl_vaccination: 'Vaccination',
+      tpl_lab: 'Blood test', tpl_specialist: 'Specialist', tpl_therapy: 'Physiotherapy', tpl_dental_clean: 'Dental cleaning',
+      c_gp: 'GP', c_dentist: 'Dentist', c_eye: 'Eye doctor', c_specialist: 'Specialist', c_vaccination: 'Vaccination',
+      c_lab: 'Blood test / lab', c_therapy: 'Physiotherapy', c_other: 'Other',
+      emptyTitle: 'No appointments yet',
+      emptyText: 'Add a doctor\u2019s visit, dentist, or any other appointment. It will show up sorted by what\u2019s coming up next.',
+      noMatch: 'Nothing matches your search or filters.', clearFilters: 'Clear filters',
+      newAppt: 'New appointment', editAppt: 'Edit appointment', apptTitle: 'Appointment', apptTitlePh: 'e.g. Dr. Smith, Cardiologist',
+      person: 'Whose appointment', personPh: 'e.g. Mia (or leave empty)', category: 'Type',
+      dateLbl: 'Date', timeLbl: 'Time', noTime: 'No specific time',
+      location: 'Location', locationPh: 'e.g. clinic name and address', searchMaps: 'Search on Maps', openMaps: 'Open in Google Maps',
+      phone: 'Phone number', phonePh: 'e.g. clinic phone', call: 'Call',
+      prepLbl: 'How to prepare', prepHint: 'Shown clearly so you don\u2019t miss it \u2014 e.g. "fast for 8 hours", "bring referral letter".', prepPh: 'e.g. Fast for 8 hours beforehand',
+      notes: 'Notes', optional: ' (optional)',
+      remindersLbl: 'Remind me before', remindersHint: 'Pick as many as you like.',
+      customLbl: 'Other time (days before)', addCustom: 'Add',
+      more: 'More details',
+      needTitle: 'Enter a name for the appointment', needDate: 'Pick a date', badPhone: 'That doesn\u2019t look like a phone number',
+      badCustom: 'Enter a number of days from 1 to 365',
+      addBtn: 'Add', save: 'Save changes', cancel: 'Cancel', close: 'Close', undo: 'Undo',
+      lWhen: 'When', lWhere: 'Where', lPhone: 'Phone', lNotes: 'Notes',
+      remHead: 'Reminders', before: 'before',
+      markDone: 'Mark as done', markCancel: 'Cancel appointment', uncancel: 'Restore appointment',
+      addCal: 'Add to calendar', edit: 'Edit', del: 'Delete',
+      pastHead: function (n) { return 'Past: ' + n; }, showPast: 'Show past', hidePast: 'Hide past',
+      st_today: 'Today', st_tomorrow: 'Tomorrow', st_week: 'This week', st_later: 'Upcoming', st_past: 'Past', st_cancelled: 'Cancelled',
+      tAdded: function (x) { return 'Added "' + x + '"'; }, tSaved: 'Changes saved',
+      tCancelled: function (x) { return 'Cancelled "' + x + '"'; }, tRestored: function (x) { return 'Restored "' + x + '"'; },
+      tDeleted: function (x) { return 'Deleted "' + x + '"'; },
+      tCal: 'Calendar file ready', tNoDates: 'No upcoming appointments to add',
+      tSaveFail: 'Could not save. Storage may be full or blocked.',
+      aOpen: 'Open: ', aShow: 'Show ', aFilter: 'Filter: ',
+      settingsTitle: 'Settings', language: 'Language',
+      defTitle: 'Default reminders', defText: 'Used for every new appointment.',
+      calTitle: 'Calendar', calText: 'Adds every appointment to your phone\u2019s calendar, with a reminder attached. The calendar reminds you even when this app is closed.',
+      calBtn: 'Add everything to calendar',
+      bgTitle: 'Reminders when the app is closed', bgToggle: 'Check in the background (Chrome only)',
+      bgHint: 'Chrome checks your appointments now and then in the background and may show a notification. This is not guaranteed.',
+      bgActive: 'Background checking is on.', bgNeedInstall: 'Available after installing the app from Chrome.',
+      bgUnsupported: 'This browser does not support background checking.', bgDenied: 'Background checking is blocked in your settings.',
+      notifAsk: 'Allow notifications', notifAllowed: 'Notifications are on.', notifBlocked: 'Notifications are blocked in your browser settings.',
+      notifNone: 'This browser does not support notifications.',
+      limitsTitle: 'Important',
+      limitsText: 'Web apps on Android cannot ring or notify at a set time while they are closed. The most dependable reminders are the ones in your phone\u2019s calendar, so add your appointments there.',
+      install: 'Install', installText: 'Add Appointment Tracker to your home screen so it opens like a normal app.',
+      installBtn: 'Install on this phone', installed: 'Installed on this phone',
+      backup: 'Backup',
+      backupText: 'Your data lives only on this phone. Save a backup file now and then, so you can restore it if the app data is ever cleared.',
+      saveBackup: 'Save backup file', restore: 'Restore from backup file', backupDone: 'Backup file downloaded',
+      erase: 'Erase everything', eraseBtn: 'Delete all data…', eraseTitle: 'Delete all data?',
+      eraseText: 'This removes every appointment from this phone. Save a backup first if you may want them back.',
+      eraseGo: 'Delete everything', erased: 'All data deleted',
+      restoreTitle: 'Restore this backup?',
+      restoreText: function (n) { return 'Appointments in the backup: ' + n + '. It replaces what is on this phone now.'; },
+      restoreGo: 'Replace with backup', restored: 'Backup restored',
+      badFile: 'That file is not a backup from this app.', readFail: 'Could not read that file.',
+      today: 'today', tomorrow: 'tomorrow', yesterday: 'yesterday',
+      inDays: function (n) { return 'in ' + n + ' days'; }, agoDays: function (n) { return n + ' days ago'; },
+      leadD: function (n) { return n === 1 ? '1 day' : n + ' days'; },
+      icsPrep: 'Preparation', icsPhone: 'Phone', icsLoc: 'Location'
+    },
+    pl: {
+      appName: 'Appointment Tracker', title: 'Wizyty', addAppt: 'Dodaj wizytę', calAll: 'Dodaj wszystko do kalendarza',
+      search: 'Szukaj', searchPh: 'Szukaj wizyty…',
+      headNone: 'Nic nie jest zaplanowane.',
+      headNext: function (n) { return n + ' ' + plural(n, ['nadchodząca wizyta', 'nadchodzące wizyty', 'nadchodzących wizyt']); },
+      next: 'Najbliższa', allPeople: 'Wszyscy', general: 'Ogólne', peopleNav: 'Osoby',
+      groupBy: 'Grupuj', gDate: 'Data', gPerson: 'Osoba', gType: 'Rodzaj',
+      h_today: 'Dziś', h_tomorrow: 'Jutro', h_week: 'W tym tygodniu', h_later: 'Później',
+      tplTitle: 'Szybkie dodawanie',
+      tpl_gp: 'Lekarz rodzinny', tpl_dentist: 'Dentysta', tpl_eye: 'Badanie wzroku', tpl_vaccination: 'Szczepienie',
+      tpl_lab: 'Badanie krwi', tpl_specialist: 'Specjalista', tpl_therapy: 'Fizjoterapia', tpl_dental_clean: 'Higienizacja zębów',
+      c_gp: 'Lekarz rodzinny', c_dentist: 'Dentysta', c_eye: 'Okulista', c_specialist: 'Specjalista', c_vaccination: 'Szczepienie',
+      c_lab: 'Badanie krwi / laboratorium', c_therapy: 'Fizjoterapia', c_other: 'Inne',
+      emptyTitle: 'Jeszcze nie ma wizyt',
+      emptyText: 'Dodaj wizytę u lekarza, dentysty albo inne spotkanie. Lista sama ułoży się od najbliższej.',
+      noMatch: 'Nic nie pasuje do wyszukiwania lub filtrów.', clearFilters: 'Wyczyść filtry',
+      newAppt: 'Nowa wizyta', editAppt: 'Edytuj wizytę', apptTitle: 'Wizyta', apptTitlePh: 'np. Dr Kowalski, kardiolog',
+      person: 'Czyja to wizyta', personPh: 'np. Ola (albo zostaw puste)', category: 'Rodzaj',
+      dateLbl: 'Data', timeLbl: 'Godzina', noTime: 'Bez konkretnej godziny',
+      location: 'Lokalizacja', locationPh: 'np. nazwa przychodni i adres', searchMaps: 'Szukaj na Mapach', openMaps: 'Otwórz w Google Maps',
+      phone: 'Numer telefonu', phonePh: 'np. telefon do przychodni', call: 'Zadzwoń',
+      prepLbl: 'Jak się przygotować', prepHint: 'Pokazane wyraźnie, żeby nie umknęło — np. „na czczo 8 godzin”, „zabrać skierowanie”.', prepPh: 'np. Na czczo 8 godzin przed',
+      notes: 'Notatki', optional: ' (opcjonalnie)',
+      remindersLbl: 'Przypomnij mi przed', remindersHint: 'Wybierz tyle, ile chcesz.',
+      customLbl: 'Inny czas (dni przed)', addCustom: 'Dodaj',
+      more: 'Więcej szczegółów',
+      needTitle: 'Wpisz nazwę wizyty', needDate: 'Wybierz datę', badPhone: 'To nie wygląda na numer telefonu',
+      badCustom: 'Wpisz liczbę dni od 1 do 365',
+      addBtn: 'Dodaj', save: 'Zapisz zmiany', cancel: 'Anuluj', close: 'Zamknij', undo: 'Cofnij',
+      lWhen: 'Kiedy', lWhere: 'Gdzie', lPhone: 'Telefon', lNotes: 'Notatki',
+      remHead: 'Przypomnienia', before: 'przed',
+      markDone: 'Oznacz jako odbytą', markCancel: 'Odwołaj wizytę', uncancel: 'Przywróć wizytę',
+      addCal: 'Dodaj do kalendarza', edit: 'Edytuj', del: 'Usuń',
+      pastHead: function (n) { return 'Minione: ' + n; }, showPast: 'Pokaż minione', hidePast: 'Ukryj minione',
+      st_today: 'Dziś', st_tomorrow: 'Jutro', st_week: 'W tym tygodniu', st_later: 'Nadchodząca', st_past: 'Minęła', st_cancelled: 'Odwołana',
+      tAdded: function (x) { return 'Dodano: „' + x + '”'; }, tSaved: 'Zapisano zmiany',
+      tCancelled: function (x) { return 'Odwołano: „' + x + '”'; }, tRestored: function (x) { return 'Przywrócono: „' + x + '”'; },
+      tDeleted: function (x) { return 'Usunięto: „' + x + '”'; },
+      tCal: 'Plik kalendarza gotowy', tNoDates: 'Brak nadchodzących wizyt do dodania',
+      tSaveFail: 'Nie udało się zapisać. Pamięć może być pełna lub zablokowana.',
+      aOpen: 'Otwórz: ', aShow: 'Pokaż: ', aFilter: 'Filtruj: ',
+      settingsTitle: 'Ustawienia', language: 'Język',
+      defTitle: 'Domyślne przypomnienia', defText: 'Ustawiane dla każdej nowej wizyty.',
+      calTitle: 'Kalendarz', calText: 'Dodaje każdą wizytę do kalendarza w telefonie razem z przypomnieniem. Kalendarz przypomni Ci nawet wtedy, gdy ta aplikacja jest zamknięta.',
+      calBtn: 'Dodaj wszystko do kalendarza',
+      bgTitle: 'Przypomnienia przy zamkniętej aplikacji', bgToggle: 'Sprawdzaj w tle (tylko Chrome)',
+      bgHint: 'Chrome sprawdza wizyty co jakiś czas w tle i może pokazać powiadomienie. Nie jest to gwarantowane.',
+      bgActive: 'Sprawdzanie w tle jest włączone.', bgNeedInstall: 'Dostępne po zainstalowaniu aplikacji z Chrome.',
+      bgUnsupported: 'Ta przeglądarka nie obsługuje sprawdzania w tle.', bgDenied: 'Sprawdzanie w tle jest zablokowane w ustawieniach.',
+      notifAsk: 'Zezwól na powiadomienia', notifAllowed: 'Powiadomienia są włączone.', notifBlocked: 'Powiadomienia są zablokowane w ustawieniach przeglądarki.',
+      notifNone: 'Ta przeglądarka nie obsługuje powiadomień.',
+      limitsTitle: 'Ważne',
+      limitsText: 'Aplikacje internetowe na Androidzie nie mogą dzwonić ani wysyłać powiadomień o umówionej porze, gdy są zamknięte. Najpewniejsze są przypomnienia w kalendarzu telefonu, więc dodaj tam wizyty.',
+      install: 'Instalacja', installText: 'Dodaj aplikację do ekranu głównego, żeby otwierała się jak zwykła aplikacja.',
+      installBtn: 'Zainstaluj na tym telefonie', installed: 'Zainstalowano na tym telefonie',
+      backup: 'Kopia zapasowa',
+      backupText: 'Dane są tylko na tym telefonie. Od czasu do czasu zapisz plik kopii, żeby móc je odzyskać, gdyby dane aplikacji zostały wyczyszczone.',
+      saveBackup: 'Zapisz plik kopii', restore: 'Przywróć z pliku kopii', backupDone: 'Kopia zapasowa pobrana',
+      erase: 'Usuwanie', eraseBtn: 'Usuń wszystkie dane…', eraseTitle: 'Usunąć wszystkie dane?',
+      eraseText: 'To usunie wszystkie wizyty z tego telefonu. Jeśli możesz ich jeszcze potrzebować, najpierw zapisz kopię.',
+      eraseGo: 'Usuń wszystko', erased: 'Wszystkie dane usunięte',
+      restoreTitle: 'Przywrócić kopię?',
+      restoreText: function (n) { return 'Wizyty w kopii: ' + n + '. To zastąpi dane na tym telefonie.'; },
+      restoreGo: 'Zastąp danymi z kopii', restored: 'Kopia przywrócona',
+      badFile: 'To nie jest plik kopii tej aplikacji.', readFail: 'Nie można odczytać pliku.',
+      today: 'dziś', tomorrow: 'jutro', yesterday: 'wczoraj',
+      inDays: function (n) { return 'za ' + n + ' dni'; }, agoDays: function (n) { return n + ' dni temu'; },
+      leadD: function (n) { return n === 1 ? '1 dzień' : n + ' dni'; },
+      icsPrep: 'Przygotowanie', icsPhone: 'Telefon', icsLoc: 'Lokalizacja'
+    }
+  };
+  var TEMPLATES = [
+    { k: 'gp', cat: 'gp' }, { k: 'dentist', cat: 'dentist' }, { k: 'eye', cat: 'eye' }, { k: 'vaccination', cat: 'vaccination' },
+    { k: 'lab', cat: 'lab' }, { k: 'specialist', cat: 'specialist' }, { k: 'therapy', cat: 'therapy' }, { k: 'dental_clean', cat: 'dentist' }
+  ];
+
+  function lang() { return state.lang || 'en'; }   // defaults to English regardless of phone language; switch anytime in Settings
+  function t(key, a, b) {
+    var v = T[lang()][key];
+    if (v === undefined) v = T.en[key];
+    return typeof v === 'function' ? v(a, b) : v;
+  }
+  function locale() { return lang() === 'pl' ? 'pl-PL' : 'en-GB'; }
+
+  /* ---------- dates ---------- */
+  function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function isoToDate(iso) { var p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function dateToISO(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function shiftDay(iso, delta) { var d = isoToDate(iso); d.setDate(d.getDate() + delta); return dateToISO(d); }
+  function daysBetween(a, b) { return Math.round((isoToDate(b) - isoToDate(a)) / 86400000); }
+  function fmtDate(iso, opts) { return isoToDate(iso).toLocaleDateString(locale(), opts || { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function dow3(iso) { return isoToDate(iso).toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '').slice(0, 3); }
+  function relText(days) {
+    if (days === 0) return t('today');
+    if (days === 1) return t('tomorrow');
+    if (days === -1) return t('yesterday');
+    return days > 0 ? t('inDays', days) : t('agoDays', -days);
+  }
+  function leadLabel(n) { return t('leadD', n); }
+
+  /* ---------- data ---------- */
+  // appts: { id, title, person, cat, date, time, location, phone, prep, notes, leads[], status:'open'|'cancelled', created, url? }
+  function blank() { return { version: 1, lang: '', appts: [], settings: { leads: [1, 7], bg: false }, group: 'date' }; }
+
+  function sanitize(d) {
+    var out = blank();
+    if (!d || typeof d !== 'object') return out;
+    if (d.lang === 'pl' || d.lang === 'en') out.lang = d.lang;
+    if (d.group === 'person' || d.group === 'type') out.group = d.group;
+    var dre = /^\d{4}-\d{2}-\d{2}$/, tre = /^\d{2}:\d{2}$/;
+    var cleanLeads = function (arr) { return (Array.isArray(arr) ? arr : []).filter(function (n, i, a) { return Number.isInteger(n) && n >= 1 && n <= 365 && a.indexOf(n) === i; }).sort(function (a, b) { return b - a; }); };
+    var s = d.settings && typeof d.settings === 'object' ? d.settings : {};
+    out.settings.leads = s.leads ? cleanLeads(s.leads) : [1, 7];
+    out.settings.bg = s.bg === true;
+    var ids = {};
+    (Array.isArray(d.appts) ? d.appts : []).forEach(function (x) {
+      if (!x || typeof x.id !== 'string' || typeof x.title !== 'string' || ids[x.id] || !dre.test(x.date)) return;
+      ids[x.id] = true;
+      out.appts.push({
+        id: x.id, title: x.title.slice(0, 60), person: typeof x.person === 'string' ? x.person.trim().slice(0, 30) : '',
+        cat: CATS.indexOf(x.cat) !== -1 ? x.cat : 'other', date: x.date, time: tre.test(x.time) ? x.time : '',
+        location: typeof x.location === 'string' ? x.location.slice(0, 120) : '',
+        phone: typeof x.phone === 'string' ? x.phone.slice(0, 30) : '',
+        prep: typeof x.prep === 'string' ? x.prep.slice(0, 300) : '', notes: typeof x.notes === 'string' ? x.notes.slice(0, 500) : '',
+        leads: cleanLeads(x.leads), status: x.status === 'cancelled' ? 'cancelled' : 'open',
+        created: typeof x.created === 'number' ? x.created : 0
+      });
+    });
+    return out;
+  }
+
+  var state = load();
+  function load() {
+    try { var raw = localStorage.getItem(KEY); if (raw) return sanitize(JSON.parse(raw)); } catch (e) { /* fresh start */ }
+    return blank();
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { toast(t('tSaveFail')); }
+    syncMirror();
+  }
+
+  var live = todayISO();
+  var flt = { owner: '\u0000all', q: '' };
+  var showPast = false;
+
+  function findAppt(id) { return state.appts.filter(function (a) { return a.id === id; })[0]; }
+  function okey(s) { return String(s || '').trim().toLowerCase(); }
+  function ownerColor(name) {
+    var k = okey(name), n = 0;
+    for (var i = 0; i < k.length; i++) n = (n * 31 + k.charCodeAt(i)) >>> 0;
+    return COLORS[n % COLORS.length];
+  }
+  function ownerLabels() {
+    var map = {};
+    state.appts.forEach(function (a) { if (a.person && !map[okey(a.person)]) map[okey(a.person)] = a.person; });
+    return map;
+  }
+  function canonicalOwner(input) { var s = input.trim(); return ownerLabels()[okey(s)] || s; }
+
+  function isPast(a) { return a.date < live; }
+  function statusOf(a) {
+    if (a.status === 'cancelled') return 'cancelled';
+    if (isPast(a)) return 'past';
+    var days = daysBetween(live, a.date);
+    if (days === 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    if (days <= 7) return 'week';
+    return 'later';
+  }
+  function byWhen(a, b) { return a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.title.localeCompare(b.title); }
+  function upcoming() { return state.appts.filter(function (a) { return a.status !== 'cancelled' && !isPast(a); }).sort(byWhen); }
+  function matches(a, q) {
+    if (!q) return true;
+    var hay = [a.title, a.person, a.location, a.notes, a.prep, t('c_' + a.cat)].join(' ').toLowerCase();
+    return hay.indexOf(q.toLowerCase()) !== -1;
+  }
+  function ownerOk(a) { return flt.owner === '\u0000all' || okey(a.person) === flt.owner; }
+  function attentionCount() { return upcoming().filter(function (a) { var s = statusOf(a); return s === 'today' || s === 'tomorrow'; }).length; }
+
+  /* ---------- actions ---------- */
+  function change(message, fn) {
+    var snapshot = JSON.stringify(state);
+    fn();
+    save();
+    render();
+    toast(message, { label: t('undo'), fn: function () { state = sanitize(JSON.parse(snapshot)); save(); render(); } });
+  }
+  function apptFromForm(f, base) {
+    var a = base || { id: uid(), status: 'open', created: Date.now() };
+    a.title = f.title; a.person = f.person; a.cat = f.cat; a.date = f.date; a.time = f.time;
+    a.location = f.location; a.phone = f.phone; a.prep = f.prep; a.notes = f.notes; a.leads = f.leads.slice();
+    return a;
+  }
+
+  /* ---------- rendering ---------- */
+  function renderHeader() {
+    $('#titleH').textContent = t('title');
+    $('#dateText').textContent = isoToDate(live).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function renderSummary() {
+    var box = $('#summary');
+    box.replaceChildren();
+    if (!state.appts.length) return;
+    var list = upcoming().filter(function (a) { return ownerOk(a) && matches(a, flt.q); });
+    var card = h('div', { class: 'card' },
+      h('h2', { class: list.length ? 'attn' : 'good' }, list.length ? t('headNext', list.length) : t('headNone')));
+    if (list.length) {
+      var n = list[0];
+      card.appendChild(h('div', { class: 'nextrow' },
+        h('span', { class: 'avatar', style: '--kid:' + (n.person ? ownerColor(n.person) : 'var(--ring)') }, n.person ? Array.from(n.person)[0].toUpperCase() : '\u2013'),
+        h('div', { class: 'txt' },
+          h('b', null, n.title),
+          h('span', null, [n.person, dow3(n.date) + ' ' + fmtDate(n.date, { day: 'numeric', month: 'short' }) + (n.time ? ', ' + n.time : ''), relText(daysBetween(live, n.date))].filter(Boolean).join(' \u00b7 ')))));
+    }
+    box.appendChild(card);
+  }
+
+  function renderControls() {
+    var box = $('#controls');
+    box.replaceChildren();
+    if (!state.appts.length) return;
+    var search = h('input', { type: 'search', class: 'search', placeholder: t('searchPh'), 'aria-label': t('search'), value: flt.q,
+      oninput: function () { flt.q = search.value; renderSummary(); renderList(); } });
+    box.appendChild(search);
+
+    var labels = ownerLabels(), keys = Object.keys(labels).sort(function (a, b) { return labels[a].localeCompare(labels[b]); });
+    var hasGeneral = state.appts.some(function (a) { return !a.person; });
+    if (keys.length) {
+      var needs = {};
+      upcoming().forEach(function (a) { var s = statusOf(a); if (s === 'today' || s === 'tomorrow') needs[okey(a.person)] = true; });
+      var nav = h('nav', { class: 'kids', role: 'tablist', 'aria-label': t('peopleNav') });
+      var chip = function (key, label, color, isAll) {
+        var sel = flt.owner === key;
+        return h('button', { class: 'kidchip' + (isAll ? ' allchip' : ''), type: 'button', role: 'tab', style: '--kid:' + (color || 'var(--ink)'),
+          'aria-selected': sel ? 'true' : 'false', 'aria-label': t('aShow') + label,
+          onclick: function () { flt.owner = key; renderControls(); renderSummary(); renderList(); } },
+          isAll ? null : h('span', { class: 'avatar', style: '--kid:' + color }, Array.from(label)[0].toUpperCase()),
+          label, (!isAll && needs[key]) ? h('span', { class: 'duedot', 'aria-hidden': 'true' }) : null);
+      };
+      nav.appendChild(chip('\u0000all', t('allPeople'), null, true));
+      keys.forEach(function (k) { nav.appendChild(chip(k, labels[k], ownerColor(labels[k]), false)); });
+      if (hasGeneral) nav.appendChild(chip('', t('general'), 'var(--ring)', false));
+      box.appendChild(nav);
+    }
+    var seg = h('div', { class: 'seg3', role: 'radiogroup', 'aria-label': t('groupBy') },
+      [['date', t('gDate')], ['person', t('gPerson')], ['type', t('gType')]].map(function (o) {
+        var r = h('input', { type: 'radio', name: 'group', value: o[0], checked: state.group === o[0] });
+        r.addEventListener('change', function () { state.group = o[0]; save(); renderList(); });
+        return h('label', null, r, h('span', null, o[1]));
+      }));
+    box.appendChild(h('div', { class: 'groupby' }, h('span', null, t('groupBy')), seg));
+  }
+
+  function rowFor(a) {
+    var st = statusOf(a), tags = [];
+    if (a.person) tags.push(h('span', { class: 'owner', style: '--kid:' + ownerColor(a.person) }, h('i'), a.person));
+    tags.push(h('span', { class: 'tag' }, t('c_' + a.cat)));
+    if (a.location) tags.push(h('span', { class: 'tag' }, ICON.pin ? h('span', { html: ICON.pin, style: 'display:flex' }) : null, a.location));
+    var side = h('div', { class: 'side' },
+      h('div', { class: 'rel' }, relText(daysBetween(live, a.date))),
+      a.time ? h('div', { class: 'tm' }, a.time) : null,
+      st === 'cancelled' ? h('div', { class: 'badge' }, t('st_cancelled')) : null);
+    var dateBox = h('div', { class: 'date' }, h('div', { class: 'dow' }, dow3(a.date)), h('div', { class: 'dnum' }, String(isoToDate(a.date).getDate())));
+    return h('li', { class: 'row st-' + st },
+      h('button', { class: 'rowbtn', type: 'button', 'aria-label': t('aOpen') + a.title, onclick: function () { detailSheet(a.id); } },
+        dateBox,
+        h('div', null,
+          h('div', { class: 'name' + (st === 'cancelled' ? ' strike' : '') }, a.title),
+          h('div', { class: 'tags' }, tags),
+          a.prep ? h('div', { class: 'prepflag' }, t('prepLbl')) : null),
+        side));
+  }
+
+  function groupsFor(list) {
+    var groups = [];
+    if (state.group === 'person') {
+      var labels = ownerLabels(), map = {};
+      list.forEach(function (a) { var k = okey(a.person); (map[k] = map[k] || []).push(a); });
+      Object.keys(map).filter(function (k) { return k !== ''; }).sort(function (a, b) { return labels[a].localeCompare(labels[b]); })
+        .forEach(function (k) { groups.push({ head: labels[k], items: map[k] }); });
+      if (map['']) groups.push({ head: t('general'), items: map[''] });
+    } else if (state.group === 'type') {
+      CATS.forEach(function (c) { var g = list.filter(function (a) { return a.cat === c; }); if (g.length) groups.push({ head: t('c_' + c), items: g }); });
+    } else {
+      [['today', 'h_today'], ['tomorrow', 'h_tomorrow'], ['week', 'h_week'], ['later', 'h_later']].forEach(function (p) {
+        var g = list.filter(function (a) { return statusOf(a) === p[0]; }); if (g.length) groups.push({ head: t(p[1]), cls: 'g-' + p[0], items: g });
+      });
+    }
+    return groups;
+  }
+
+  function renderList() {
+    var box = $('#list');
+    box.replaceChildren();
+    if (!state.appts.length) {
+      box.appendChild(h('div', { class: 'empty' }, h('h2', null, t('emptyTitle')), h('p', null, t('emptyText')),
+        h('div', { class: 'chips' }, TEMPLATES.slice(0, 5).map(function (tp) {
+          return h('button', { class: 'chip', type: 'button', onclick: function () { apptSheet(null, tp); } }, t('tpl_' + tp.k));
+        }))));
+      return;
+    }
+    var list = upcoming().filter(function (a) { return ownerOk(a) && matches(a, flt.q); });
+    var cancelled = state.appts.filter(function (a) { return a.status === 'cancelled' && !isPast(a) && ownerOk(a) && matches(a, flt.q); }).sort(byWhen);
+    if (!list.length && !cancelled.length) {
+      box.appendChild(h('div', { class: 'empty' }, h('p', null, t('noMatch')),
+        h('button', { class: 'btn ghost', type: 'button', onclick: function () { flt.owner = '\u0000all'; flt.q = ''; render(); } }, t('clearFilters'))));
+      return;
+    }
+    groupsFor(list).forEach(function (g) {
+      box.appendChild(h('div', { class: 'grouphead ' + (g.cls || '') }, g.head, h('span', null, String(g.items.length))));
+      box.appendChild(h('ul', { class: 'group' }, g.items.map(rowFor)));
+    });
+    if (cancelled.length) {
+      box.appendChild(h('div', { class: 'grouphead' }, t('st_cancelled'), h('span', null, String(cancelled.length))));
+      box.appendChild(h('ul', { class: 'group' }, cancelled.map(rowFor)));
+    }
+  }
+
+  function renderPast() {
+    var box = $('#pastsec');
+    box.replaceChildren();
+    var past = state.appts.filter(isPast).sort(function (a, b) { return byWhen(b, a); });
+    if (!past.length) return;
+    box.appendChild(h('button', { class: 'linkbtn', type: 'button', onclick: function () { showPast = !showPast; renderPast(); } },
+      (showPast ? t('hidePast') : t('showPast')) + ' (' + past.length + ')'));
+    if (showPast) box.appendChild(h('ul', { class: 'group', style: 'margin-top:8px' }, past.map(rowFor)));
+  }
+
+  function render() {
+    renderHeader(); renderSummary(); renderControls(); renderList(); renderPast();
+    $('#addBtn').hidden = false;
+    try { if (navigator.setAppBadge) { var n = attentionCount(); if (n) navigator.setAppBadge(n); else navigator.clearAppBadge(); } } catch (e) { /* not supported */ }
+  }
+
+  function applyLang() {
+    document.documentElement.lang = lang();
+    document.title = t('appName');
+    $('#settingsBtn').setAttribute('aria-label', t('settingsTitle'));
+    $('#calBtn').setAttribute('aria-label', t('calAll'));
+    $('#addBtn').innerHTML = ICON.plus;
+    $('#addBtn').appendChild(h('span', null, t('addAppt')));
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer = null;
+  function toast(message, action) {
+    var root = $('#toastRoot');
+    clearTimeout(toastTimer);
+    root.replaceChildren();
+    var el = h('div', { class: 'toast', role: 'status' }, h('span', null, message));
+    if (action) {
+      el.appendChild(h('button', { type: 'button', onclick: function () { clearTimeout(toastTimer); root.replaceChildren(); action.fn(); } }, action.label));
+    }
+    root.appendChild(el);
+    toastTimer = setTimeout(function () { root.replaceChildren(); }, action ? 6000 : 3500);
+  }
+
+  /* ---------- sheets ---------- */
+  var sheetEl = null, sheetHistory = false;
+  function openSheet(title, sub, nodes, focusFirst) {
+    var content = [h('div', { class: 'grab' }), h('h2', null, title), sub ? h('p', { class: 'sub2' }, sub) : null, nodes];
+    if (sheetEl) {
+      var sheet = sheetEl.firstChild;
+      sheet.replaceChildren.apply(sheet, content.filter(Boolean).flat());
+      sheet.scrollTop = 0;
+      return;
+    }
+    clearTimeout(toastTimer); $('#toastRoot').replaceChildren();
+    var box = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title });
+    append(box, content);
+    sheetEl = h('div', { class: 'scrim', onclick: function (e) { if (e.target === sheetEl) closeSheet(); } }, box);
+    $('#sheetRoot').appendChild(sheetEl);
+    try { history.pushState({ sheet: 1 }, ''); sheetHistory = true; } catch (e) { sheetHistory = false; }
+    if (focusFirst) { var first = box.querySelector('input[type=text]'); if (first) first.focus(); }
+  }
+  function removeSheetEl() { if (sheetEl) { sheetEl.remove(); sheetEl = null; } }
+  function closeSheet() { if (!sheetEl) return; if (sheetHistory) { sheetHistory = false; history.back(); } else removeSheetEl(); }
+  window.addEventListener('popstate', removeSheetEl);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+
+  function field(label, input, optional) {
+    return h('label', { class: 'field' }, h('span', { class: 'lbl' }, label, optional ? h('span', { class: 'opt' }, t('optional')) : null), input);
+  }
+  function button(cls, label, onclick, type, sub) {
+    return h('button', { class: 'btn ' + cls, type: type || 'button', onclick: onclick }, label, sub ? h('small', null, sub) : null);
+  }
+
+  function leadPicker(initial, onChange) {
+    var sel = initial.slice(), chips = h('div', { class: 'pickchips' });
+    function changed() { if (onChange) onChange(sel.slice()); }
+    function draw() {
+      chips.replaceChildren();
+      var all = PRESET_LEADS.slice();
+      sel.forEach(function (n) { if (all.indexOf(n) === -1) all.push(n); });
+      all.sort(function (a, b) { return a - b; });
+      all.forEach(function (n) {
+        var i = h('input', { type: 'checkbox', value: String(n), checked: sel.indexOf(n) !== -1 });
+        i.addEventListener('change', function () {
+          if (i.checked) { if (sel.indexOf(n) === -1) sel.push(n); } else sel = sel.filter(function (x) { return x !== n; });
+          changed();
+        });
+        chips.appendChild(h('label', { class: 'pickchip' }, i, h('span', null, leadLabel(n))));
+      });
+    }
+    var numI = h('input', { type: 'number', inputmode: 'numeric', min: '1', max: '365', step: '1', placeholder: '21', 'aria-label': t('customLbl') });
+    var addBtn = button('ghost', t('addCustom'), function () {
+      var n = parseInt(numI.value, 10);
+      if (!(n >= 1 && n <= 365)) { toast(t('badCustom')); numI.focus(); return; }
+      if (sel.indexOf(n) === -1) sel.push(n);
+      numI.value = ''; draw(); changed();
+    });
+    draw();
+    var node = h('div', null, chips, h('div', { class: 'field', style: 'margin-top:12px;margin-bottom:0' }, h('span', { class: 'lbl' }, t('customLbl')),
+      h('div', { class: 'customrow', style: 'margin-top:0' }, numI, addBtn)));
+    return { node: node, get: function () { return sel.slice().sort(function (a, b) { return b - a; }); } };
+  }
+
+  function mapsSearchUrl(q) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
+
+  function apptSheet(existing, tpl) {
+    var editing = !!existing;
+    var titleI = h('input', { type: 'text', required: true, maxlength: '60', placeholder: t('apptTitlePh'), autocomplete: 'off', autocapitalize: 'sentences',
+      value: editing ? existing.title : (tpl ? t('tpl_' + tpl.k) : '') });
+    var labels = ownerLabels();
+    var personI = h('input', { type: 'text', maxlength: '30', placeholder: t('personPh'), autocomplete: 'off', autocapitalize: 'words', list: 'ownerlist',
+      value: editing ? existing.person : (flt.owner !== '\u0000all' && flt.owner ? labels[flt.owner] || '' : '') });
+    var ownerList = h('datalist', { id: 'ownerlist' }, Object.keys(labels).map(function (k) { return h('option', { value: labels[k] }); }));
+    var curCat = editing ? existing.cat : (tpl ? tpl.cat : 'other');
+    var catBox = h('div', { class: 'pickchips' }, CATS.map(function (c) {
+      return h('label', { class: 'pickchip' }, h('input', { type: 'radio', name: 'cat', value: c, checked: c === curCat }), h('span', null, t('c_' + c)));
+    }));
+    var dateI = h('input', { type: 'date', required: true, value: editing ? existing.date : live });
+    var noTime = h('input', { type: 'checkbox', class: 'switch', role: 'switch', checked: editing ? !existing.time : true });
+    var timeI = h('input', { type: 'time', value: editing && existing.time ? existing.time : '' });
+    var timeBox = h('div', null, field(t('timeLbl'), timeI));
+    timeBox.hidden = noTime.checked;
+    noTime.addEventListener('change', function () { timeBox.hidden = noTime.checked; });
+
+    var locI = h('input', { type: 'text', maxlength: '120', placeholder: t('locationPh'), autocomplete: 'off', value: editing ? existing.location : '' });
+    var mapsBtn = h('a', { class: 'iconbtn', href: '#', target: '_blank', rel: 'noopener noreferrer', 'aria-label': t('searchMaps'), html: ICON.pin });
+    function syncMaps() { mapsBtn.href = locI.value.trim() ? mapsSearchUrl(locI.value.trim()) : '#'; }
+    locI.addEventListener('input', syncMaps); syncMaps();
+    mapsBtn.addEventListener('click', function (e) { if (!locI.value.trim()) e.preventDefault(); });
+
+    var phoneI = h('input', { type: 'tel', maxlength: '30', placeholder: t('phonePh'), autocomplete: 'off', value: editing ? existing.phone : '' });
+    var picker = leadPicker(editing ? existing.leads : state.settings.leads);
+    var prepI = h('textarea', { maxlength: '300', placeholder: t('prepPh') }); prepI.value = editing ? existing.prep : '';
+    var notesI = h('textarea', { maxlength: '500' }); notesI.value = editing ? existing.notes : '';
+
+    var tplRow = null;
+    if (!editing) {
+      tplRow = h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('tplTitle')),
+        h('div', { class: 'tplrow' }, TEMPLATES.map(function (tp) {
+          return h('button', { class: 'chip', type: 'button', onclick: function () {
+            titleI.value = t('tpl_' + tp.k);
+            var r = catBox.querySelector('input[value="' + tp.cat + '"]'); if (r) r.checked = true;
+            titleI.focus();
+          } }, t('tpl_' + tp.k));
+        })));
+    }
+
+    var form = h('form', { onsubmit: function (e) {
+      e.preventDefault();
+      var title = titleI.value.trim();
+      if (!title) { toast(t('needTitle')); titleI.focus(); return; }
+      if (!dateI.value) { toast(t('needDate')); dateI.focus(); return; }
+      var phone = phoneI.value.trim();
+      if (phone && !/^[0-9+()\-.\s]{5,30}$/.test(phone)) { toast(t('badPhone')); phoneI.focus(); return; }
+      var cat = catBox.querySelector('input:checked');
+      var f = {
+        title: title, person: canonicalOwner(personI.value), cat: cat ? cat.value : 'other', date: dateI.value,
+        time: noTime.checked ? '' : timeI.value, location: locI.value.trim(), phone: phone,
+        prep: prepI.value.trim(), notes: notesI.value.trim(), leads: picker.get()
+      };
+      if (editing) { apptFromForm(f, existing); save(); render(); closeSheet(); toast(t('tSaved')); }
+      else { var a = apptFromForm(f); state.appts.push(a); save(); render(); closeSheet(); toast(t('tAdded', title)); }
+    } },
+      tplRow,
+      field(t('apptTitle'), titleI),
+      h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('person'), h('span', { class: 'opt' }, t('optional'))), personI, ownerList),
+      h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('category')), catBox),
+      field(t('dateLbl'), dateI),
+      h('label', { class: 'switchrow' }, h('span', null, h('b', null, t('noTime'))), noTime),
+      timeBox,
+      h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('location'), h('span', { class: 'opt' }, t('optional'))), h('div', { class: 'locrow' }, locI, mapsBtn)),
+      h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('remindersLbl')), h('p', { class: 'hint' }, t('remindersHint')), picker.node),
+      h('details', null, h('summary', null, t('more')),
+        field(t('phone'), phoneI, true),
+        h('div', { class: 'prepbox' }, h('span', { class: 'lbl' }, t('prepLbl')), h('p', { class: 'hint' }, t('prepHint')), prepI),
+        field(t('notes'), notesI, true)),
+      h('div', { class: 'btnrow' },
+        button('primary', editing ? t('save') : t('addBtn'), null, 'submit'),
+        button('ghost', t('cancel'), closeSheet)));
+    openSheet(editing ? t('editAppt') : t('newAppt'), null, [form], !editing);
+  }
+
+  /* ---------- detail ---------- */
+  function detailSheet(id) {
+    var a = findAppt(id);
+    if (!a) return;
+    var st = statusOf(a);
+    var kv = [];
+    var row = function (k, v) { if (v) kv.push(h('div', null, h('dt', null, k), h('dd', null, v))); };
+    row(t('lWhen'), dow3(a.date) + ', ' + fmtDate(a.date) + (a.time ? ', ' + a.time : '') + ' (' + relText(daysBetween(live, a.date)) + ')');
+    if (a.location) row(t('lWhere'), h('span', null, a.location, ' ', h('a', { href: mapsSearchUrl(a.location), target: '_blank', rel: 'noopener noreferrer' }, t('openMaps'))));
+    if (a.phone) row(t('lPhone'), h('a', { href: 'tel:' + a.phone.replace(/\s+/g, '') }, a.phone));
+    row(t('lNotes'), a.notes);
+
+    var nodes = [h('span', { class: 'pillst st-' + st }, t('st_' + st)), h('dl', { class: 'kv' }, kv)];
+    if (a.prep) nodes.push(h('div', { class: 'prepcall' }, h('b', null, t('prepLbl')), a.prep));
+    if (a.leads.length && st !== 'past' && st !== 'cancelled') {
+      nodes.push(h('div', { class: 'section' }, h('h3', null, t('remHead')),
+        h('ul', { class: 'rlist' }, a.leads.map(function (n) { return h('li', null, h('span', null, leadLabel(n) + ' ' + t('before')), h('span', null, fmtDate(shiftDay(a.date, -n), { day: 'numeric', month: 'short' }))); }))));
+    }
+    var btns = [];
+    if (st !== 'past') {
+      if (a.location) btns.push(button('ok', t('openMaps'), function () { window.open(mapsSearchUrl(a.location), '_blank', 'noopener'); }));
+      btns.push(button('ghost', t('addCal'), function () { exportCalendar([a]); }));
+      btns.push(button('ghost', t('edit'), function () { apptSheet(a); }));
+      if (st === 'cancelled') btns.push(button('ghost', t('uncancel'), function () { closeSheet(); change(t('tRestored', a.title), function () { a.status = 'open'; }); }));
+      else btns.push(button('ghost', t('markCancel'), function () { closeSheet(); change(t('tCancelled', a.title), function () { a.status = 'cancelled'; }); }));
+    } else {
+      if (a.location) btns.push(button('ghost', t('openMaps'), function () { window.open(mapsSearchUrl(a.location), '_blank', 'noopener'); }));
+      btns.push(button('ghost', t('edit'), function () { apptSheet(a); }));
+    }
+    nodes.push(h('div', { class: 'btnrow detailbtns' }, btns));
+    nodes.push(h('div', { class: 'extras' }, h('button', { class: 'textbtn dangertext', type: 'button', onclick: function () {
+      closeSheet(); change(t('tDeleted', a.title), function () { state.appts = state.appts.filter(function (x) { return x.id !== a.id; }); });
+    } }, t('del'))));
+    openSheet(a.title, [a.person, t('c_' + a.cat)].filter(Boolean).join(', '), nodes);
+  }
+
+  /* ---------- calendar export (.ics) ---------- */
+  function icsEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+  function icsFold(line) {
+    var enc = new TextEncoder(), out = [], cur = '', bytes = 0;
+    Array.from(line).forEach(function (ch) {
+      var b = enc.encode(ch).length;
+      if (bytes + b > (out.length ? 72 : 74)) { out.push(cur); cur = ch; bytes = b; } else { cur += ch; bytes += b; }
+    });
+    out.push(cur);
+    return out.join('\r\n ');
+  }
+  function icsDate(iso) { return iso.replace(/-/g, ''); }
+  function icsDateTime(iso, tm) { var hm = (tm || '09:00').replace(':', ''); return icsDate(iso) + 'T' + hm + '00'; }
+  function buildIcs(appts) {
+    var stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''), lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Appointment Tracker//EN', 'CALSCALE:GREGORIAN'], count = 0;
+    appts.forEach(function (a) {
+      if (a.status === 'cancelled' || a.date < live) return;
+      count++;
+      var who = a.person ? ' (' + a.person + ')' : '', name = a.title + who;
+      var desc = [a.prep ? t('icsPrep') + ': ' + a.prep : '', a.phone ? t('icsPhone') + ': ' + a.phone : '', a.location ? t('icsLoc') + ': ' + a.location : '', a.notes].filter(Boolean).join('\n');
+      lines.push('BEGIN:VEVENT', 'UID:' + a.id + '@appt-tracker', 'DTSTAMP:' + stamp);
+      if (a.time) {
+        var startMin = parseInt(a.time.slice(0, 2), 10) * 60 + parseInt(a.time.slice(3), 10), endMin = startMin + 30;
+        var endTime = pad(Math.floor(endMin / 60) % 24) + ':' + pad(endMin % 60);
+        lines.push('DTSTART:' + icsDateTime(a.date, a.time), 'DTEND:' + icsDateTime(a.date, endTime));
+      } else {
+        lines.push('DTSTART;VALUE=DATE:' + icsDate(a.date), 'DTEND;VALUE=DATE:' + icsDate(shiftDay(a.date, 1)));
+      }
+      lines.push('SUMMARY:' + icsEscape(name), 'DESCRIPTION:' + icsEscape(desc));
+      if (a.location) lines.push('LOCATION:' + icsEscape(a.location));
+      lines.push('TRANSP:OPAQUE');
+      var leads = a.leads.length ? a.leads : [0];
+      leads.forEach(function (n) {
+        lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(name), 'TRIGGER:-P' + n + 'D', 'END:VALARM');
+      });
+      lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    return { text: lines.map(icsFold).join('\r\n') + '\r\n', count: count };
+  }
+  function deliverFile(name, mime, text) {
+    var download = function () {
+      var url = URL.createObjectURL(new Blob([text], { type: mime }));
+      var a = h('a', { href: url, download: name });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+    };
+    var file = null;
+    try { file = new File([text], name, { type: mime }); } catch (e) { file = null; }
+    if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: name }).catch(function (err) { if (!err || err.name !== 'AbortError') download(); });
+    } else download();
+  }
+  function exportCalendar(appts) {
+    var r = buildIcs(appts);
+    if (!r.count) { toast(t('tNoDates')); return; }
+    deliverFile('appointments.ics', 'text/calendar', r.text);
+    toast(t('tCal'));
+  }
+
+  /* ---------- background reminders (best effort) ---------- */
+  function idbOpen() {
+    return new Promise(function (resolve, reject) {
+      var r = indexedDB.open('apptTracker', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
+      r.onsuccess = function () { resolve(r.result); };
+      r.onerror = function () { reject(r.error); };
+    });
+  }
+  function idbGet(key) { return idbOpen().then(function (db) { return new Promise(function (resolve, reject) { var q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = function () { resolve(q.result); }; q.onerror = function () { reject(q.error); }; }); }); }
+  function idbSet(key, value) { return idbOpen().then(function (db) { return new Promise(function (resolve, reject) { var tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(value, key); tx.oncomplete = function () { resolve(); }; tx.onerror = function () { reject(tx.error); }; }); }); }
+  function computeDue(m, today) {
+    var out = [];
+    ((m && m.items) || []).forEach(function (it) { (it.dates || []).forEach(function (dt) { if (dt === today) out.push({ key: it.id + '|' + dt, it: it }); }); });
+    return out;
+  }
+  var mirrorTimer = null;
+  function syncMirror() { clearTimeout(mirrorTimer); mirrorTimer = setTimeout(doMirror, 400); }
+  function doMirror() {
+    if (!window.indexedDB) return;
+    var items = upcoming().map(function (a) {
+      return { id: a.id, title: a.title, person: a.person, date: a.date, time: a.time, dates: a.leads.map(function (n) { return shiftDay(a.date, -n); }) };
+    });
+    idbGet('mirror').then(function (old) {
+      var shown = (old && old.shown) || {};
+      if (document.visibilityState === 'visible') computeDue({ items: items }, live).forEach(function (x) { shown[x.key] = true; });
+      return idbSet('mirror', { lang: lang(), items: items, shown: shown });
+    }).catch(function () { /* IndexedDB unavailable: reminders in the app still work */ });
+  }
+  function setupBackground() {
+    if (!state.settings.bg || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function (reg) {
+      if (!('periodicSync' in reg)) return;
+      return reg.periodicSync.register('appt-reminders', { minInterval: 12 * 3600 * 1000 });
+    }).catch(function () { /* not allowed here */ });
+  }
+  function bgStatus(node) {
+    var set = function (k) { node.textContent = t(k); };
+    if (!('serviceWorker' in navigator) || !('PeriodicSyncManager' in window)) { set('bgUnsupported'); return; }
+    if (!state.settings.bg) { node.textContent = ''; return; }
+    if (!navigator.permissions) { set('bgNeedInstall'); return; }
+    navigator.permissions.query({ name: 'periodic-background-sync' }).then(function (p) {
+      if (p.state === 'granted') set('bgActive'); else if (p.state === 'denied') set('bgDenied'); else set('bgNeedInstall');
+    }).catch(function () { set('bgNeedInstall'); });
+  }
+
+  /* ---------- settings ---------- */
+  var deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; toast(t('installed')); });
+
+  function segmented(name, options, current, extraClass, onchange) {
+    var wrap = h('div', { class: 'seg3' + (extraClass ? ' ' + extraClass : ''), role: 'radiogroup' });
+    options.forEach(function (o) {
+      var r = h('input', { type: 'radio', name: name, value: o.value, checked: o.value === current });
+      if (onchange) r.addEventListener('change', function () { onchange(o.value); });
+      wrap.appendChild(h('label', null, r, h('span', null, o.label)));
+    });
+    return wrap;
+  }
+
+  function settingsSheet() {
+    var langSeg = segmented('lang', [{ value: 'en', label: 'English' }, { value: 'pl', label: 'Polski' }], lang(), 'two', function (v) {
+      state.lang = v; save(); applyLang(); render(); settingsSheet();
+    });
+    var defPicker = leadPicker(state.settings.leads, function (arr) { state.settings.leads = arr.sort(function (a, b) { return b - a; }); save(); });
+    var bgI = h('input', { type: 'checkbox', class: 'switch', role: 'switch', checked: state.settings.bg, onchange: function () { state.settings.bg = bgI.checked; save(); setupBackground(); bgStatus(bgNote); } });
+    var bgNote = h('p', { style: 'margin-top:6px' });
+    bgStatus(bgNote);
+    var notifState = typeof Notification === 'undefined' ? 'none' : Notification.permission;
+    var notifNode = notifState === 'granted' ? h('p', null, t('notifAllowed'))
+      : notifState === 'denied' ? h('p', null, t('notifBlocked'))
+      : notifState === 'none' ? h('p', null, t('notifNone'))
+      : button('ghost', t('notifAsk'), function () { Notification.requestPermission().then(function () { settingsSheet(); }); });
+    var fileI = h('input', { type: 'file', accept: 'application/json,.json', class: 'vis', tabindex: '-1', 'aria-hidden': 'true',
+      onchange: function () { importFile(fileI.files[0]); fileI.value = ''; } });
+
+    openSheet(t('settingsTitle'), null, [
+      h('div', { class: 'field' }, h('span', { class: 'lbl' }, t('language')), langSeg),
+      h('div', { class: 'section' }, h('h3', null, t('defTitle')), h('p', null, t('defText')), defPicker.node),
+      h('div', { class: 'section' }, h('h3', null, t('calTitle')), h('p', null, t('calText')), button('primary', t('calBtn'), function () { exportCalendar(state.appts); })),
+      h('div', { class: 'section' }, h('h3', null, t('bgTitle')),
+        h('label', { class: 'switchrow' }, h('span', null, h('b', null, t('bgToggle')), h('small', null, t('bgHint'))), bgI), bgNote,
+        notifNode,
+        h('div', { class: 'notice', style: 'margin-top:12px' }, h('b', null, t('limitsTitle')), t('limitsText'))),
+      deferredInstall ? h('div', { class: 'section' }, h('h3', null, t('install')), h('p', null, t('installText')),
+        button('primary', t('installBtn'), function () { var ev = deferredInstall; deferredInstall = null; closeSheet(); ev.prompt(); })) : null,
+      h('div', { class: 'section' }, h('h3', null, t('backup')), h('p', null, t('backupText')),
+        h('div', { class: 'btnrow' }, button('ghost', t('saveBackup'), exportData), button('ghost', t('restore'), function () { fileI.click(); }), fileI)),
+      h('div', { class: 'section' }, h('h3', null, t('erase')), button('danger', t('eraseBtn'), eraseSheet)),
+      h('div', { class: 'btnrow', style: 'margin-top:22px' }, button('ghost', t('close'), closeSheet))
+    ]);
+  }
+
+  function eraseSheet() {
+    openSheet(t('eraseTitle'), t('eraseText'), [
+      h('div', { class: 'btnrow' },
+        button('danger', t('eraseGo'), function () {
+          var keepLang = state.lang; state = blank(); state.lang = keepLang; save(); flt = { owner: '\u0000all', q: '' }; closeSheet(); render(); toast(t('erased'));
+        }),
+        button('ghost', t('cancel'), closeSheet))
+    ]);
+  }
+
+  function exportData() {
+    var payload = Object.assign({ app: 'apptTracker' }, state);
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = h('a', { href: url, download: 'appointment-tracker-backup-' + todayISO() + '.json' });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+    toast(t('backupDone'));
+  }
+
+  function importFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data = null;
+      try {
+        var parsed = JSON.parse(reader.result);
+        if (parsed && parsed.app === 'apptTracker' && Array.isArray(parsed.appts)) data = sanitize(parsed);
+      } catch (e) { data = null; }
+      if (!data) { toast(t('badFile')); return; }
+      openSheet(t('restoreTitle'), t('restoreText', data.appts.length), [
+        h('div', { class: 'btnrow' },
+          button('primary', t('restoreGo'), function () {
+            state = data; save(); flt = { owner: '\u0000all', q: '' }; closeSheet(); applyLang(); render(); setupBackground(); toast(t('restored'));
+          }),
+          button('ghost', t('cancel'), closeSheet))
+      ]);
+    };
+    reader.onerror = function () { toast(t('readFail')); };
+    reader.readAsText(file);
+  }
+
+  /* ---------- wiring ---------- */
+  $('#settingsBtn').innerHTML = ICON.tune;
+  $('#calBtn').innerHTML = ICON.cal;
+  $('#addBtn').addEventListener('click', function () { apptSheet(null); });
+  $('#settingsBtn').addEventListener('click', settingsSheet);
+  $('#calBtn').addEventListener('click', function () { exportCalendar(state.appts); });
+
+  function checkNewDay() {
+    var now = todayISO();
+    if (now === live) return;
+    live = now;
+    render(); syncMirror();
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { checkNewDay(); syncMirror(); } });
+  setInterval(checkNewDay, 60000);
+
+  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(function () {}); }
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  applyLang();
+  render();
+  syncMirror();
+  setupBackground();
+})();
+</script>
+</body>
+</html>

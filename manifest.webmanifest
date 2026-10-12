@@ -1,0 +1,17 @@
+{
+  "name": "appointmentTracker",
+  "short_name": "appointmentTracker",
+  "description": "Track medical and other appointments for the whole family, sorted by what's next. / Terminy wizyt dla całej rodziny, od najbliższego.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFF2FA",
+  "theme_color": "#EFF2FA",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
